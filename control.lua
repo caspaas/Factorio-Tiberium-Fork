@@ -38,6 +38,9 @@ local Speed_Module_Name = "tiberium-control-node-hidden-beacon-speed-module"
 local TCN_Beacon_Name = "tiberium-control-node-hidden-beacon"
 local TCN_affected_entities = {"tiberium-aoe-node-harvester", "tiberium-spike", "tiberium-node-harvester", "tiberium-network-node"}
 local tiberiumNodeNames = {"tibGrowthNode", "tibGrowthNode_infinite"}
+-- Raised whenever AddOre places Tiberium Ore on a tile or grows the ore already there, for companion mods.
+-- Event data: surface_index, entity (the ore), amount_before (0 when the ore was just placed)
+local on_tiberium_ore_changed = script.generate_event_name()
 local tiberiumNodeStructures = {"tibNode_tree", "tiberium-node-harvester", "tiberium-spike", "tiberium-growth-accelerator", "tiberium-detonation-charge", "tiberium-monoculture-green", "tiberium-monoculture-blue"}
 
 local whichPlanet = (script.active_mods["any-planet-start"] and settings.startup["aps-planet"].value == "tiber") and "tiber-start"
@@ -506,6 +509,16 @@ local interface = {}
 interface.add_tiberium_immunity = function(entity_name) if entity_name then storage.exemptDamageNames[entity_name] = true end end
 -- Flag prototypes with specific names to not take damage from growing Tiberium
 interface.add_tiberium_immunity_prototype = function(prototype_name) if prototype_name then storage.exemptDamagePrototypes[prototype_name] = true end end
+-- Event ids for companion mods to listen to with script.on_event
+interface.get_event_ids = function() return {on_tiberium_ore_changed = on_tiberium_ore_changed} end
+-- Flag entities with specific names to stop Tiberium growth like a cliff: ore piles up on its own side and is never placed on them
+-- Call from on_init and on_configuration_changed, the list is kept in storage
+interface.add_growth_blocker = function(entity_name)
+	if entity_name and prototypes.entity[entity_name] then
+		storage.growthBlockers = storage.growthBlockers or {}
+		storage.growthBlockers[entity_name] = true
+	end
+end
 
 remote.add_interface("Tiberium", interface)
 
@@ -571,10 +584,15 @@ function AddOre(surface, position, amount, oreName, cascaded)
 		-- Grow existing tib except for the case where it needs to be replaced instead of growing it
 		if oreEntity.amount < TiberiumMaxPerTile then --Don't reduce overgrown ore patch amounts
 			--Testing performance
+			local amountBefore = oreEntity.amount
 			oreEntity.amount = math.min(oreEntity.amount + growthRate, TiberiumMaxPerTile)
+			script.raise_event(on_tiberium_ore_changed, {surface_index = surface.index, entity = oreEntity, amount_before = amountBefore})
 		end
 	elseif surface.count_entities_filtered{area = area, name = tiberiumNodeNames} > 0 then
 		return nil --Don't place ore on top of nodes
+	elseif storage.growthBlockers and next(storage.growthBlockers)
+			and surface.count_entities_filtered{area = area, name = growthBlockerNames(), limit = 1} > 0 then
+		return nil --Don't place ore on entities that companion mods flagged as blocking growth
 	elseif tile.collides_with("resource")
 			or tile.collides_with("water_tile") then
 		return nil  -- Don't place on invalid tiles
@@ -603,7 +621,9 @@ function AddOre(surface, position, amount, oreName, cascaded)
 			if storage.tiberiumTerrain and surface.platform == nil then
 				surface.set_tiles({{name = storage.tiberiumTerrain, position = position}}, true, false)
 			end
-			surface.destroy_decoratives{position = position} --Remove decoration on tile on spread.
+			--Remove decoration on tile on spread. Takes a tile position: the ore's centre (x.5, y.5) could clear a neighbour instead
+			surface.destroy_decoratives{position = {math.floor(position.x), math.floor(position.y)}}
+			script.raise_event(on_tiberium_ore_changed, {surface_index = surface.index, entity = oreEntity, amount_before = 0})
 		end
 
 		if doCascade and not cascaded then
@@ -652,6 +672,9 @@ function CheckPoint(surface, position, lastValidPosition, growthRate, oreName)
 
 	local area = areaAroundPosition(position)
 	local entitiesBlockTiberium = {"tiberium-srf-wall", "cliff", "tibGrowthNode_infinite"}
+	for name in pairs(storage.growthBlockers or {}) do
+		table.insert(entitiesBlockTiberium, name)
+	end
 	if surface.count_entities_filtered{area = area, name = entitiesBlockTiberium} > 0 then
 		AddOre(surface, lastValidPosition, growthRate * 0.5, oreName, false)  --50% lost
 		return true  --Hit fence or cliff or spiked node, add to previous ore
@@ -1479,6 +1502,16 @@ function removeNodeFromGrowthList(node)
 			return
 		end
 	end
+end
+
+---Names of the entities companion mods flagged as blocking Tiberium growth
+---@return string[]
+function growthBlockerNames()
+	local names = {}
+	for name in pairs(storage.growthBlockers or {}) do
+		table.insert(names, name)
+	end
+	return names
 end
 
 ---Turn position into box for searching
