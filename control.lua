@@ -993,6 +993,9 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
 	elseif event.effect_id == "ore-destruction-sonic-emitter" then
 		-- Red is too unstable for it: only the Red Sonic Emitter clears red
 		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 1.5, TiberiumColours.STABLE)
+	elseif event.effect_id == "red-shard" then
+		local position = event.target_position
+		RedTiberium.shard(game.surfaces[event.surface_index], {x = math.floor(position.x) + 0.5, y = math.floor(position.y) + 0.5})
 	elseif event.effect_id == "sonic-clear-red" then
 		RedTiberium.clear(game.surfaces[event.surface_index], event.target_position, 1.5)
 	elseif event.effect_id == "ore-destruction-all" then

@@ -15,6 +15,7 @@ RedTiberium.CAP = 40
 -- Each tile throws shards 5-15 tiles out; one in four seeds a tile of red, which settles for SETTLE ticks
 -- before anything can set it off, so it never joins the chain that threw it
 RedTiberium.SHARDS = 3
+RedTiberium.SHARD = "tiberium-red-shard"
 RedTiberium.SHARD_NEAR = 5
 RedTiberium.SHARD_FAR = 15
 RedTiberium.SHARD_SEED = 0.25
@@ -147,8 +148,13 @@ function RedTiberium.after_blast(surface, position)
 	for _ = 1, RedTiberium.SHARDS do
 		local angle = math.random() * 2 * math.pi
 		local distance = RedTiberium.SHARD_NEAR + math.random() * (RedTiberium.SHARD_FAR - RedTiberium.SHARD_NEAR)
-		RedTiberium.shard(surface, {x = math.floor(position.x + distance * math.cos(angle)) + 0.5,
-			y = math.floor(position.y + distance * math.sin(angle)) + 0.5})
+		local landing = {x = math.floor(position.x + distance * math.cos(angle)) + 0.5,
+			y = math.floor(position.y + distance * math.sin(angle)) + 0.5}
+		-- It flies there, and lands through the red-shard trigger effect
+		if not surface.create_entity{name = RedTiberium.SHARD, position = position, target = landing, force = "neutral",
+				speed = 0.25 + math.random() * 0.15} then
+			RedTiberium.shard(surface, landing)
+		end
 	end
 end
 

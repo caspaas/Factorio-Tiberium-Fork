@@ -122,6 +122,34 @@ crater.ground_patch_render_layer = "decals"
 crater.final_render_layer = "decals"
 data:extend{crater}
 
+-- A shard: one of red ore's smallest crystals, glowing, thrown from a blast; where it lands it may seed red
+-- (scripts/RedTiberium.lua). A placeholder look until red's own art
+local shardPicture = {
+	filename = tiberiumInternalName.."/graphics/entity/ores/hr-tiberium-ore-red.png",
+	priority = "high",
+	width = 128,
+	height = 128,
+	x = 128 * 11,
+	scale = 0.25,
+}
+local shardShadow = flib_table.deep_copy(shardPicture)
+shardShadow.draw_as_shadow = true
+data:extend{{
+	type = "projectile",
+	name = "tiberium-red-shard",
+	flags = {"not-on-map"},
+	hidden = true,
+	acceleration = 0,
+	rotatable = false,
+	animation = shardPicture,
+	shadow = shardShadow,
+	light = {intensity = 0.6, size = 4, color = RUBY},
+	action = {
+		type = "direct",
+		action_delivery = {type = "instant", target_effects = {{type = "script", effect_id = "red-shard"}}},
+	},
+}}
+
 -- Its Sonic Emitter, made as the blue one, shakes red apart without setting it off
 redCopy("electric-energy-interface", "tiberium-sonic-emitter-blue")
 redCopy("item", "tiberium-sonic-emitter-blue")
