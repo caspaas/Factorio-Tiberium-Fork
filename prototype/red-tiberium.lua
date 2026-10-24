@@ -43,6 +43,9 @@ ore.stages = flib_table.deep_copy(data.raw.resource["tiberium-ore"].stages)
 ore.stages.sheet.filename = tiberiumInternalName.."/graphics/entity/ores/hr-tiberium-ore-red.png"
 ore.stages_effect = flib_table.deep_copy(data.raw.resource["tiberium-ore"].stages_effect)
 ore.stages_effect.sheet.filename = tiberiumInternalName.."/graphics/entity/ores/tiberium-ore-glow-red.png"
+-- The eye sees red so much dimmer than green that at green's strength red hardly glows at night: stronger
+ore.min_effect_alpha = 0.5
+ore.max_effect_alpha = 0.8
 ore.map_color = RUBY
 
 local oreItem = redCopy("item", "tiberium-ore-blue")
