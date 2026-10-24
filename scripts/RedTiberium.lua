@@ -199,6 +199,18 @@ function RedTiberium.on_tick(tick)
 	end
 end
 
+---Clears the unstable ore within `radius` of `position` quietly, its cores with it: no blast, nothing set off
+---(the Red Sonic Emitter's sound shakes the crystal apart)
+---@param surface LuaSurface
+---@param position MapPosition
+---@param radius number
+function RedTiberium.clear(surface, position, radius)
+	for _, ore in pairs(surface.find_entities_filtered{name = TiberiumColours.UNSTABLE, position = position, radius = radius}) do
+		RedTiberium.disarm(surface, ore.position)
+		ore.destroy()
+	end
+end
+
 ---Whether entities of a name are buildings
 ---@type table<string, boolean>
 local isBuilding = {}

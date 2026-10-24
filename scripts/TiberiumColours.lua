@@ -29,13 +29,13 @@ local TiberiumColours = {
 
 ---Every colour's ore, in order
 TiberiumColours.ORES = {}
----The ores of the unstable colours (red)
-TiberiumColours.UNSTABLE = {}
+---The ores of the unstable colours (red), and of the rest
+TiberiumColours.UNSTABLE, TiberiumColours.STABLE = {}, {}
 ---The colours by key and by ore
 TiberiumColours.BY_KEY, TiberiumColours.BY_ORE = {}, {}
 for _, colour in ipairs(TiberiumColours) do
 	table.insert(TiberiumColours.ORES, colour.ore)
-	if colour.unstable then table.insert(TiberiumColours.UNSTABLE, colour.ore) end
+	table.insert(colour.unstable and TiberiumColours.UNSTABLE or TiberiumColours.STABLE, colour.ore)
 	TiberiumColours.BY_KEY[colour.key] = colour
 	TiberiumColours.BY_ORE[colour.ore] = colour
 end

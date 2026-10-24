@@ -995,7 +995,10 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
 	elseif event.effect_id == "seed-launch-blue" then
 		TiberiumSeedMissile(game.surfaces[event.surface_index], event.target_position, 4.1 * TiberiumMaxPerTile, "tiberium-ore-blue")
 	elseif event.effect_id == "ore-destruction-sonic-emitter" then
-		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 1.5, TiberiumColours.ORES)
+		-- Red is too unstable for it: only the Red Sonic Emitter clears red
+		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 1.5, TiberiumColours.STABLE)
+	elseif event.effect_id == "sonic-clear-red" then
+		RedTiberium.clear(game.surfaces[event.surface_index], event.target_position, 1.5)
 	elseif event.effect_id == "ore-destruction-all" then
 		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 3, TiberiumColours.ORES)
 	elseif event.effect_id == "ore-destruction-nuke" then
@@ -1052,7 +1055,7 @@ commands.add_command("tibRebuildLists",
 			for _, drill in pairs(surface.find_entities_filtered{type = "mining-drill"}) do
 				table.insert(storage.tibDrills, {entity = drill, name = drill.name, position = drill.position})
 			end
-			for _, sonic in pairs(surface.find_entities_filtered{name = {"tiberium-sonic-emitter", "tiberium-sonic-emitter-blue"}}) do
+			for _, sonic in pairs(surface.find_entities_filtered{name = {"tiberium-sonic-emitter", "tiberium-sonic-emitter-blue", "tiberium-sonic-emitter-red"}}) do
 				table.insert(storage.tibSonicEmitters, {position = sonic.position, surface = surface})
 			end
 		end
@@ -1326,15 +1329,19 @@ script.on_event(defines.events.on_tick, function(event)
 	-- Sonic Emitters
 	for i, location in pairs(storage.tibSonicEmitters) do
 		if (i % 60) == (event.tick % 60) then
-			local emitter = location.surface.find_entities_filtered{name = {"tiberium-sonic-emitter", "tiberium-sonic-emitter-blue"}, position = location.position}[1]
+			local emitter = location.surface.find_entities_filtered{name = {"tiberium-sonic-emitter", "tiberium-sonic-emitter-blue", "tiberium-sonic-emitter-red"}, position = location.position}[1]
 			if emitter and (emitter.energy >= emitter.electric_buffer_size) then
-				local targetOreTypes = (emitter.name == "tiberium-sonic-emitter-blue") and "tiberium-ore-blue" or storage.oreTypes
+				-- The regular one leaves red alone; the red one clears only red, quietly
+				local red = emitter.name == "tiberium-sonic-emitter-red"
+				local targetOreTypes = (emitter.name == "tiberium-sonic-emitter-blue") and "tiberium-ore-blue"
+					or red and TiberiumColours.UNSTABLE or TiberiumColours.STABLE
 				local ore = location.surface.find_entities_filtered{name = targetOreTypes, position = location.position, radius = 12}
 				if #ore > 0 then
 					local targetOre = ore[math.random(1, #ore)]
 					local dummy = location.surface.create_entity{name = "tiberium-target-dummy", position = targetOre.position}
 					if dummy then
-						location.surface.create_entity{name = "tiberium-sonic-emitter-projectile", position = location.position, speed = 0.2, target = dummy}
+						location.surface.create_entity{name = red and "tiberium-sonic-emitter-projectile-red" or "tiberium-sonic-emitter-projectile",
+							position = location.position, speed = 0.2, target = dummy}
 						dummy.destroy()
 						emitter.energy = 0
 					end
@@ -1796,7 +1803,8 @@ function on_new_entity(event)
 		registerEntity(new_entity)
 		addNodeToGrowthList(new_entity)
 		createBlossomTree(surface, position)
-	elseif (new_entity.name == "tiberium-sonic-emitter") or (new_entity.name == "tiberium-sonic-emitter-blue") then
+	elseif (new_entity.name == "tiberium-sonic-emitter") or (new_entity.name == "tiberium-sonic-emitter-blue")
+			or (new_entity.name == "tiberium-sonic-emitter-red") then
 		registerEntity(new_entity)
 		table.insert(storage.tibSonicEmitters, {position = new_entity.position, surface = surface})
 	elseif (new_entity.name == "tiberium-detonation-charge") then
@@ -1840,7 +1848,7 @@ function entity_removed_cleanup(entity, tick, position)
 			end
 		end
 	end
-	if (entity.name == "tiberium-sonic-emitter") or (entity.name == "tiberium-sonic-emitter-blue") then
+	if (entity.name == "tiberium-sonic-emitter") or (entity.name == "tiberium-sonic-emitter-blue") or (entity.name == "tiberium-sonic-emitter-red") then
 		for i = 1, #storage.tibSonicEmitters do
 			if flib_table.deep_compare(storage.tibSonicEmitters[i].position, entity.position) then
 				table.remove(storage.tibSonicEmitters, i)

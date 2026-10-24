@@ -119,6 +119,9 @@ data:extend{drill, drillItem, {
 redCopy("electric-energy-interface", "tiberium-sonic-emitter-blue")
 redCopy("item", "tiberium-sonic-emitter-blue")
 redCopy("recipe", "tiberium-sonic-emitter-blue")
+local sonicRed = flib.copy_prototype(data.raw.projectile["tiberium-sonic-emitter-projectile"], "tiberium-sonic-emitter-projectile-red")
+sonicRed.action[1].action_delivery.target_effects[1].effect_id = "sonic-clear-red"
+data:extend{sonicRed}
 
 -- Red Tiberium Mining: after Red Refining, with its science packs
 local mining = flib_table.deep_copy(tech)
