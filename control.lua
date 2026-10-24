@@ -49,6 +49,7 @@ local whichPlanet = (script.active_mods["any-planet-start"] and settings.startup
 		or (script.active_mods["any-planet-start"] and settings.startup["aps-planet"].value ~= "none" and settings.startup["tiberium-on"].value == "tiber-start") and "tiber"
 		or settings.startup["tiberium-on"].value  --[[@as string]]
 local TiberiumDamage = settings.global["tiberium-damage"].value * (whichPlanet == "tiber" and 2 or 1)
+RedTiberium.tiberiumDamage = function() return TiberiumDamage end
 local TiberiumGrowth = settings.startup["tiberium-growth"].value * 10
 local TiberiumMaxPerTile = settings.startup["tiberium-growth"].value * 100 --Force 10:1 ratio with growth
 local TiberiumRadius = settings.startup["tiberium-radius"].value  --[[@as uint]]
@@ -952,10 +953,18 @@ end
 function TiberiumDestructionMissile(surface, position, radius, oreNames)
 	local counts = {}
 	local total = 0
+	local unstable = {}  -- Red is not quietly destroyed: it goes off
 	for _, ore in pairs(surface.find_entities_filtered{position = position, radius = radius, name = oreNames}) do
-		counts[ore.name] = (counts[ore.name] or 0) + 1
-		total = total + 1
-		ore.destroy()
+		if TiberiumColours.BY_ORE[ore.name] and TiberiumColours.BY_ORE[ore.name].unstable then
+			table.insert(unstable, ore.position)
+		else
+			counts[ore.name] = (counts[ore.name] or 0) + 1
+			total = total + 1
+			ore.destroy()
+		end
+	end
+	for _, orePosition in pairs(unstable) do
+		RedTiberium.blast(surface, orePosition)
 	end
 	if total > 0 then
 		-- Scorchmark
@@ -1990,6 +1999,7 @@ script.on_event(defines.events.on_robot_pre_mined, on_pre_mined)
 ---Need to handle detonation charges down here because on_object_destroyed can't distinguish between dying and mining
 ---@param event EventData.on_entity_died
 function on_entity_died(event)
+	RedTiberium.on_entity_died(event)
 	local entity = event.entity
 	if entity and (entity.name == "tiberium-detonation-charge") then
 		for _, node in pairs(entity.surface.find_entities_filtered{area = areaAroundPosition(entity.position), name = "tibGrowthNode"}) do

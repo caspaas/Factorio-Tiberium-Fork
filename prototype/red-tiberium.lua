@@ -136,7 +136,8 @@ for name in pairs(data.raw["damage-type"]) do
 		table.insert(coreResistances, {type = name, percent = 100})
 	end
 end
-data:extend{{
+-- Area damage passes over an entity with no collision layers, so the core has a layer of its own that nothing else has
+data:extend{{type = "collision-layer", name = "tiberium-red-core"}, {
 	type = "simple-entity",
 	name = "tiberium-red-core",
 	icons = common.blankIcons,
@@ -146,7 +147,7 @@ data:extend{{
 	max_health = 30,
 	resistances = coreResistances,
 	collision_box = {{-0.4, -0.4}, {0.4, 0.4}},
-	collision_mask = {layers = {}},
+	collision_mask = {layers = {["tiberium-red-core"] = true}},
 	selectable_in_game = false,
 	remove_decoratives = "false",
 	picture = common.blankPicture,
