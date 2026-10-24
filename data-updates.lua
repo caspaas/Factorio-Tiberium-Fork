@@ -122,15 +122,18 @@ if mods["space-exploration"] then
 	data.raw["electric-energy-interface"]["tiberium-srf-emitter"].se_allow_in_space = true
 
 	se_delivery_cannon_recipes = se_delivery_cannon_recipes or {}
-	se_delivery_cannon_recipes["tiberium-ore"] = {name="tiberium-ore"}
-	se_delivery_cannon_recipes["tiberium-ore-blue"] = {name="tiberium-ore-blue"}
+	for _, ore in pairs(require("scripts.TiberiumColours").ORES) do
+		se_delivery_cannon_recipes[ore] = {name=ore}
+	end
 
 	data.raw.generator["tiberium-power-plant"].effectivity = 1
 	data.raw.fluid["liquid-tiberium"].fuel_value = "25MJ"
 end
 
 if mods["RampantResources"] then
-	for _, name in pairs({"tiberium-ore", "tiberium-ore-blue", "tibGrowthNode", "tibGrowthNode_infinite"}) do
+	local resources = {"tibGrowthNode", "tibGrowthNode_infinite"}
+	for _, ore in pairs(require("scripts.TiberiumColours").ORES) do table.insert(resources, ore) end
+	for _, name in pairs(resources) do
 		data.raw.resource[name].exclude_from_rampant_resources = true
 	end
 end

@@ -1,9 +1,8 @@
-local greenExplosion = flib.copy_prototype(data.raw.explosion["grenade-explosion"], "tiberium-explosion-green")
-local blueExplosion = flib.copy_prototype(data.raw.explosion["grenade-explosion"], "tiberium-explosion-blue")
-
-for i,_ in pairs(greenExplosion.animations) do
-	greenExplosion.animations[i].tint = common.tibCraftingTint.primary
-	blueExplosion.animations[i].tint = common.tibCraftingBlueTint.secondary
+-- The blast of each Tiberium colour when its ore is destroyed, tinted its colour
+for _, colour in ipairs(require("scripts.TiberiumColours")) do
+	local explosion = flib.copy_prototype(data.raw.explosion["grenade-explosion"], colour.explosion)
+	for i,_ in pairs(explosion.animations) do
+		explosion.animations[i].tint = colour.tint
+	end
+	data:extend{explosion}
 end
-
-data:extend{greenExplosion, blueExplosion}

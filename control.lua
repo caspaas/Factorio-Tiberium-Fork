@@ -33,6 +33,7 @@ local flib_table = require("__flib__.table")
 local flib_array = require("__flib__.array")
 require("scripts.CnC_Walls") --Note, to make SonicWalls work / be passable
 require("scripts.informatron.informatron_remote_interface")
+TiberiumColours = require("scripts.TiberiumColours")  -- The Tiberium colours, for the code they share
 
 local Speed_Module_Name = "tiberium-control-node-hidden-beacon-speed-module"
 local TCN_Beacon_Name = "tiberium-control-node-hidden-beacon"
@@ -126,7 +127,7 @@ script.on_init(function()
 		storage.blueProgress[surface.index] = 0
 	end
 	storage.rocketTime = false
-	storage.oreTypes = {"tiberium-ore", "tiberium-ore-blue"}
+	storage.oreTypes = flib_table.shallow_copy(TiberiumColours.ORES)
 	storage.tiberiumProducts = storage.oreTypes
 	storage.damageForceName = "tiberium"
 	if not game.forces[storage.damageForceName] then
@@ -580,7 +581,8 @@ function AddOre(surface, position, amount, oreName, cascaded)
 	local tile = surface.get_tile(position.x, position.y)
 	local growthRate = math.min(amount, TiberiumMaxPerTile)
 
-	if oreEntity and (oreEntity.name == oreName or (oreEntity.name == "tiberium-ore-blue" and not overrideOre)) then
+	-- Growth that names no ore grows any Tiberium past green that it reaches, rather than replacing it
+	if oreEntity and (oreEntity.name == oreName or (oreEntity.name ~= TiberiumColours[1].ore and not overrideOre)) then
 		-- Grow existing tib except for the case where it needs to be replaced instead of growing it
 		if oreEntity.amount < TiberiumMaxPerTile then --Don't reduce overgrown ore patch amounts
 			--Testing performance
@@ -628,7 +630,8 @@ function AddOre(surface, position, amount, oreName, cascaded)
 
 		if doCascade and not cascaded then
 			for _, entity in pairs(surface.find_entities_filtered{area = areaAroundPosition(position, 1), type = "resource"}) do
-				if entity.valid and (entity.name ~= oreName) and (entity.name ~= "tiberium-ore-blue") and (entity.name ~= "tibGrowthNode")
+				local colour = TiberiumColours.BY_ORE[entity.name]
+				if entity.valid and (entity.name ~= oreName) and not (colour and colour ~= TiberiumColours[1]) and (entity.name ~= "tibGrowthNode")
 						and (entity.name ~= "tibGrowthNode_infinite") then
 					AddOre(surface, entity.position, amount, oreName, true)
 				end
@@ -908,31 +911,30 @@ end
 ---@param radius uint
 ---@param oreNames EntityID[] Types of ore to destroy
 function TiberiumDestructionMissile(surface, position, radius, oreNames)
-	local green = 0
-	local blue = 0
+	local counts = {}
+	local total = 0
 	for _, ore in pairs(surface.find_entities_filtered{position = position, radius = radius, name = oreNames}) do
-		if ore.name == "tiberium-ore" then
-			green = green + 1
-		else
-			blue = blue + 1
-		end
+		counts[ore.name] = (counts[ore.name] or 0) + 1
+		total = total + 1
 		ore.destroy()
 	end
-	if green + blue > 0 then
+	if total > 0 then
 		-- Scorchmark
 		surface.create_entity{name = "small-scorchmark-tintable", position = position}
 		surface.create_entity{name = "wall-explosion", position = position}
-		-- Tinted explosion
-		if green > blue then
-			surface.create_entity{name = "tiberium-explosion-green", position = position}
-		else
-			surface.create_entity{name = "tiberium-explosion-blue", position = position}
+		-- Tinted explosion: the colour destroyed most, green only if it is strictly the most
+		local most = TiberiumColours[1]
+		for _, colour in ipairs(TiberiumColours) do
+			if colour ~= most and (counts[colour.ore] or 0) > 0 and (counts[colour.ore] or 0) >= (counts[most.ore] or 0) then
+				most = colour
+			end
 		end
+		surface.create_entity{name = most.explosion, position = position}
 		-- Destroy decoratives
 		surface.destroy_decoratives{area = areaAroundPosition(position, radius)}
 		-- AOE damage scaling off amount of tib destroyed
 		for _, entity in pairs(surface.find_entities(areaAroundPosition(position, radius))) do
-			safeDamage(entity, TiberiumDamage * (green + blue))
+			safeDamage(entity, TiberiumDamage * total)
 		end
 	end
 end
@@ -944,13 +946,15 @@ script.on_event(defines.events.on_script_trigger_effect, function(event)
 	elseif event.effect_id == "seed-launch-blue" then
 		TiberiumSeedMissile(game.surfaces[event.surface_index], event.target_position, 4.1 * TiberiumMaxPerTile, "tiberium-ore-blue")
 	elseif event.effect_id == "ore-destruction-sonic-emitter" then
-		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 1.5, {"tiberium-ore", "tiberium-ore-blue"})
-	elseif event.effect_id == "ore-destruction-blue" then
-		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 3, {"tiberium-ore-blue"})
+		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 1.5, TiberiumColours.ORES)
 	elseif event.effect_id == "ore-destruction-all" then
-		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 3, {"tiberium-ore", "tiberium-ore-blue"})
+		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 3, TiberiumColours.ORES)
 	elseif event.effect_id == "ore-destruction-nuke" then
-		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 37, {"tiberium-ore", "tiberium-ore-blue"})
+		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 37, TiberiumColours.ORES)
+	elseif event.effect_id and event.effect_id:sub(1, 15) == "ore-destruction"
+			and TiberiumColours.BY_KEY[event.effect_id:sub(17)] and event.effect_id:sub(17) ~= TiberiumColours[1].key then
+		-- One colour's own weapon (ore-destruction-blue): only that colour
+		TiberiumDestructionMissile(game.surfaces[event.surface_index], event.target_position, 3, {TiberiumColours.BY_KEY[event.effect_id:sub(17)].ore})
 	elseif event.effect_id == "node-destruction" then
 		for _, node in pairs(game.surfaces[event.surface_index].find_entities_filtered{area = areaAroundPosition(event.target_position), name = "tibGrowthNode"}) do
 			removeNodeFromGrowthList(node)
@@ -1903,11 +1907,18 @@ function on_pre_mined(event)
 	local entity = event.entity
 	if entity then
 		local fluidContents = entity.get_fluid_contents()
-		local blueTibOre = (fluidContents["tiberium-slurry-blue"] or 0)
+		-- Each colour past green spills its own slurry back as its own ore
+		local otherTibOre = {}
+		local others = 0
+		for i = 2, #TiberiumColours do
+			local amount = fluidContents[TiberiumColours[i].slurry] or 0
+			otherTibOre[i] = amount
+			others = others + amount
+		end
 		local greenTibOre = (fluidContents["tiberium-slurry"] or 0) + 2 * (fluidContents["molten-tiberium"] or 0) + 4 * (fluidContents["liquid-tiberium"] or 0)
 		local oreValueMulti = 10 / settings.startup["tiberium-value"].value
 		greenTibOre = greenTibOre * oreValueMulti
-		if greenTibOre > 0 or blueTibOre > 0 then
+		if greenTibOre > 0 or others > 0 then
 			if event.player_index then
 				game.players[event.player_index].unlock_achievement("tiberium-spill")
 			else
@@ -1918,9 +1929,11 @@ function on_pre_mined(event)
 				debugPrint("Created "..tostring(greenTibOre).." green Tiberium ore")
 				TiberiumSeedMissile(entity.surface, entity.position, greenTibOre)
 			end
-			if blueTibOre > 0 then
-				debugPrint("Created "..tostring(blueTibOre).." blue Tiberium ore")
-				TiberiumSeedMissile(entity.surface, entity.position, blueTibOre, "tiberium-ore-blue")
+			for i = 2, #TiberiumColours do
+				if otherTibOre[i] > 0 then
+					debugPrint("Created "..tostring(otherTibOre[i]).." "..TiberiumColours[i].key.." Tiberium ore")
+					TiberiumSeedMissile(entity.surface, entity.position, otherTibOre[i], TiberiumColours[i].ore)
+				end
 			end
 		end
 	end
