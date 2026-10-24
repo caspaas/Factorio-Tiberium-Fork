@@ -52,6 +52,7 @@ local TiberiumDamage = settings.global["tiberium-damage"].value * (whichPlanet =
 RedTiberium.tiberiumDamage = function() return TiberiumDamage end
 local TiberiumGrowth = settings.startup["tiberium-growth"].value * 10
 local TiberiumMaxPerTile = settings.startup["tiberium-growth"].value * 100 --Force 10:1 ratio with growth
+RedTiberium.maxPerTile = TiberiumMaxPerTile
 local TiberiumRadius = settings.startup["tiberium-radius"].value  --[[@as uint]]
 local TiberiumSpreadNodes = settings.global["tiberium-spread-nodes"].value
 local BlueTargetEvo = settings.global["tiberium-blue-target-evo"].value
@@ -1318,6 +1319,8 @@ script.on_event(defines.events.on_chunk_generated, function(event)
 end)
 
 script.on_event(defines.events.on_tick, function(event)
+	-- Red Tiberium's blasts rippling through a field
+	RedTiberium.on_tick(event.tick)
 	-- Update SRF Walls
 	CnC_SonicWall_OnTick(event)
 	-- Sonic Emitters
