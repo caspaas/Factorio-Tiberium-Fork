@@ -14,6 +14,7 @@
 ---@field unlock string? The hidden recipe that adds it to filter selections when it is first seen
 ---@field value number Tiberian Sun's price for it (Riparius 25, Vinifera 40)
 ---@field tint data.Color The tint of its blast
+---@field unstable boolean? Whether a big hit sets its ore off (scripts/RedTiberium.lua); only its own drill mines it
 
 ---@class TiberiumColours: TiberiumColour[]
 local TiberiumColours = {
@@ -22,7 +23,7 @@ local TiberiumColours = {
 	{key = "blue", ore = "tiberium-ore-blue", slurry = "tiberium-slurry-blue", explosion = "tiberium-explosion-blue", grows = true,
 		unlock = "tiberium-unlock-blue-filter", value = 40, tint = {r = 0.04, g = 0.4, b = 1, a = 1}},
 	-- Tiberium Cruentus: the rarest and richest; it never grows or spreads by itself (prototype/red-tiberium.lua)
-	{key = "red", ore = "tiberium-ore-red", slurry = "tiberium-slurry-red", explosion = "tiberium-explosion-red", grows = false,
+	{key = "red", ore = "tiberium-ore-red", slurry = "tiberium-slurry-red", explosion = "tiberium-explosion-red", grows = false, unstable = true,
 		unlock = "tiberium-unlock-red-filter", value = 70, tint = {r = 1, g = 0.05, b = 0.14, a = 1}},
 }
 

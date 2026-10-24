@@ -1,6 +1,7 @@
 -- Red Tiberium (Tiberium Cruentus): the rarest and richest Tiberium. It never grows or spreads by itself
 -- (TiberiumColours: grows = false), so it has blue's products and none of what makes or grows a colour:
--- no enrichment, seed, monoculture or Sonic Emitter of its own.
+-- no enrichment, seed or monoculture of its own. It is unstable (scripts/RedTiberium.lua): only its own
+-- drill mines it, and a Sonic Emitter of its own clears it without setting it off.
 -- Its prototypes are blue's finished ones, copied with "red" for "blue" in every name, order, locale key and
 -- picture path; its pictures are ruby recolours made by tools/tiberium/recolour_red.py. Run after
 -- recipe-settings, so blue's processing recipe already holds its ore.
@@ -87,3 +88,42 @@ end
 tech.prerequisites = {"tiberium-refining-blue", "production-science-pack"}
 tech.unit.count = 500
 table.insert(tech.unit.ingredients, {"production-science-pack", 1})
+
+-- Red is unstable: no hand and no ordinary drill mines it, only a stabilised drill of its own
+data:extend{{type = "resource-category", name = "red-tiberium"}}
+ore.category = "red-tiberium"
+
+local RED_ICON = tiberiumInternalName.."/graphics/icons/tiberium-ore-red-20-114-10.png"
+local drill = flib.copy_prototype(data.raw["mining-drill"]["electric-mining-drill"], "tiberium-red-drill")
+drill.icons = common.layeredIcons("__base__/graphics/icons/electric-mining-drill.png", 64, RED_ICON, 64, "ne")
+drill.resource_categories = {"red-tiberium"}
+drill.next_upgrade = nil
+drill.fast_replaceable_group = nil
+local drillItem = flib.copy_prototype(data.raw.item["electric-mining-drill"], "tiberium-red-drill")
+drillItem.icons = drill.icons
+drillItem.order = drillItem.order.."-red"
+data:extend{drill, drillItem, {
+	type = "recipe",
+	name = "tiberium-red-drill",
+	enabled = false,
+	energy_required = 10,
+	ingredients = {
+		{type = "item", name = "electric-mining-drill", amount = 1},
+		{type = "item", name = "steel-plate", amount = 20},
+		{type = "item", name = "processing-unit", amount = 5},
+	},
+	results = {{type = "item", name = "tiberium-red-drill", amount = 1}},
+}}
+
+-- Its Sonic Emitter, made as the blue one, shakes red apart without setting it off
+redCopy("electric-energy-interface", "tiberium-sonic-emitter-blue")
+redCopy("item", "tiberium-sonic-emitter-blue")
+redCopy("recipe", "tiberium-sonic-emitter-blue")
+
+-- Red Tiberium Mining: after Red Refining, with its science packs
+local mining = flib_table.deep_copy(tech)
+mining.name = "tiberium-red-mining"
+mining.prerequisites = {"tiberium-refining-red"}
+mining.effects = {{type = "unlock-recipe", recipe = "tiberium-red-drill"}, {type = "unlock-recipe", recipe = "tiberium-sonic-emitter-red"}}
+mining.unit.count = 300
+data:extend{mining}
