@@ -21,6 +21,9 @@ local TiberiumColours = {
 		value = 25, tint = {r = 0.109804, g = 0.721567, b = 0.231373, a = 1}},
 	{key = "blue", ore = "tiberium-ore-blue", slurry = "tiberium-slurry-blue", explosion = "tiberium-explosion-blue", grows = true,
 		unlock = "tiberium-unlock-blue-filter", value = 40, tint = {r = 0.04, g = 0.4, b = 1, a = 1}},
+	-- Tiberium Cruentus: the rarest and richest; it never grows or spreads by itself (prototype/red-tiberium.lua)
+	{key = "red", ore = "tiberium-ore-red", slurry = "tiberium-slurry-red", explosion = "tiberium-explosion-red", grows = false,
+		unlock = "tiberium-unlock-red-filter", value = 70, tint = {r = 1, g = 0.05, b = 0.14, a = 1}},
 }
 
 ---Every colour's ore, in order

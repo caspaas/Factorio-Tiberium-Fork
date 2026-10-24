@@ -76,6 +76,7 @@ require("prototype.recipe")
 require("prototype.recipe-settings")
 require("prototype.sound")
 require("prototype.achievement")
+require("prototype.red-tiberium")  -- Copies blue's finished prototypes: last
 if mods["informatron"] then require("scripts.informatron.informatron") end
 if mods["rusty-locale"] then require("scripts.localised_description") end
 if mods["any-planet-start"] and APS and (common.whichPlanet == "tiber" or common.whichPlanet == "tiber-start") then 
