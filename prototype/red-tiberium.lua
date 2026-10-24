@@ -127,3 +127,27 @@ mining.prerequisites = {"tiberium-refining-red"}
 mining.effects = {{type = "unlock-recipe", recipe = "tiberium-red-drill"}, {type = "unlock-recipe", recipe = "tiberium-sonic-emitter-red"}}
 mining.unit.count = 300
 data:extend{mining}
+
+-- Ore has no health, so every red tile carries a hidden core that only an explosion breaks: its death is
+-- the big hit that sets the tile off (scripts/RedTiberium.lua). Bullets, bites, fire and the rest do nothing.
+local coreResistances = {}
+for name in pairs(data.raw["damage-type"]) do
+	if name ~= "explosion" then
+		table.insert(coreResistances, {type = name, percent = 100})
+	end
+end
+data:extend{{
+	type = "simple-entity",
+	name = "tiberium-red-core",
+	icons = common.blankIcons,
+	flags = {"not-on-map", "not-blueprintable", "not-deconstructable", "not-repairable", "not-flammable", "placeable-off-grid",
+		"not-upgradable", "no-copy-paste", "not-in-kill-statistics"},
+	hidden = true,
+	max_health = 30,
+	resistances = coreResistances,
+	collision_box = {{-0.4, -0.4}, {0.4, 0.4}},
+	collision_mask = {layers = {}},
+	selectable_in_game = false,
+	remove_decoratives = "false",
+	picture = common.blankPicture,
+}}

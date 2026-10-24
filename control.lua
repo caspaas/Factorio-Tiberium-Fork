@@ -34,6 +34,7 @@ local flib_array = require("__flib__.array")
 require("scripts.CnC_Walls") --Note, to make SonicWalls work / be passable
 require("scripts.informatron.informatron_remote_interface")
 TiberiumColours = require("scripts.TiberiumColours")  -- The Tiberium colours, for the code they share
+RedTiberium = require("scripts.RedTiberium")  -- Red is unstable: its cores, its blast
 
 local Speed_Module_Name = "tiberium-control-node-hidden-beacon-speed-module"
 local TCN_Beacon_Name = "tiberium-control-node-hidden-beacon"
@@ -655,6 +656,7 @@ function AddOre(surface, position, amount, oreName, cascaded)
 			--Testing performance
 			oreEntity = surface.create_entity{name = oreName, amount = growthRate, position = position, enable_cliff_removal = false}
 			sightColour(surface, position, oreName)
+			RedTiberium.arm(oreEntity)
 			if storage.tiberiumTerrain and surface.platform == nil then
 				surface.set_tiles({{name = storage.tiberiumTerrain, position = position}}, true, false)
 			end
@@ -1005,6 +1007,8 @@ script.on_event(defines.events.on_resource_depleted, function(event)
 		--Remove tree entity when node is mined out
 		removeBlossomTree(event.entity.surface, event.entity.position)
 		removeNodeFromGrowthList(event.entity)
+	elseif TiberiumColours.BY_ORE[event.entity.name] and TiberiumColours.BY_ORE[event.entity.name].unstable then
+		RedTiberium.disarm(event.entity.surface, event.entity.position)  -- Mined out by its own drill: quietly
 	end
 end)
 
@@ -1578,6 +1582,7 @@ function storageIntegrityChecks()
 	-- Every colour's ore, a save from before a colour was added (red) included
 	storage.oreTypes = flib_table.shallow_copy(TiberiumColours.ORES)
 	storage.tiberiumProducts = storage.oreTypes
+	RedTiberium.sweep()
 	local nodeCount = 0
 	for _, surface in pairs(game.surfaces) do
 		nodeCount = nodeCount + surface.count_entities_filtered{name = "tibGrowthNode"}
