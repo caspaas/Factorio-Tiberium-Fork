@@ -113,7 +113,7 @@ function RedTiberium.blast(surface, position)
 	local explosion = TiberiumColours.BY_ORE[ore.name].explosion
 	position = ore.position
 	ore.destroy()
-	surface.create_entity{name = "small-scorchmark-tintable", position = position}
+	surface.create_entity{name = "tiberium-red-scorchmark", position = position}
 	surface.create_entity{name = explosion, position = position}
 	for _, entity in pairs(surface.find_entities_filtered{position = position, radius = RedTiberium.RADIUS}) do
 		if entity.valid and entity.is_entity_with_health and entity.name ~= RedTiberium.CORE then

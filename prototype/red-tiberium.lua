@@ -115,6 +115,13 @@ data:extend{drill, drillItem, {
 	results = {{type = "item", name = "tiberium-red-drill", amount = 1}},
 }}
 
+-- Its blast's crater, drawn under the ore: the vanilla one draws over it, hiding red a shard seeds in a crater
+local crater = flib.copy_prototype(data.raw.corpse["small-scorchmark-tintable"], "tiberium-red-scorchmark")
+crater.ground_patch_higher = nil
+crater.ground_patch_render_layer = "decals"
+crater.final_render_layer = "decals"
+data:extend{crater}
+
 -- Its Sonic Emitter, made as the blue one, shakes red apart without setting it off
 redCopy("electric-energy-interface", "tiberium-sonic-emitter-blue")
 redCopy("item", "tiberium-sonic-emitter-blue")
