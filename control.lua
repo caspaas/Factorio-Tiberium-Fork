@@ -954,18 +954,14 @@ end
 function TiberiumDestructionMissile(surface, position, radius, oreNames)
 	local counts = {}
 	local total = 0
-	local unstable = {}  -- Red is not quietly destroyed: it goes off
 	for _, ore in pairs(surface.find_entities_filtered{position = position, radius = radius, name = oreNames}) do
-		if TiberiumColours.BY_ORE[ore.name] and TiberiumColours.BY_ORE[ore.name].unstable then
-			table.insert(unstable, ore.position)
-		else
+		-- Armed red is not quietly destroyed: it goes off, next tick. Red still settling is destroyed as any ore is
+		local colour = TiberiumColours.BY_ORE[ore.name]
+		if not (colour and colour.unstable and RedTiberium.hit(surface, ore.position, 1)) then
 			counts[ore.name] = (counts[ore.name] or 0) + 1
 			total = total + 1
 			ore.destroy()
 		end
-	end
-	for _, orePosition in pairs(unstable) do
-		RedTiberium.blast(surface, orePosition)
 	end
 	if total > 0 then
 		-- Scorchmark

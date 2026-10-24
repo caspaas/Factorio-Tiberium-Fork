@@ -57,6 +57,19 @@ local function due(list, tick, surface, position)
 	table.insert(list[tick], {surface = surface.index, x = position.x, y = position.y})
 end
 
+---Queues the tile at `position` to blast in `delay` ticks, once however often it is queued. Every blast goes
+---through here, so no tick sets off more than CAP tiles, even when a nuke kills a whole field's cores at once.
+---@param surface LuaSurface
+---@param position MapPosition
+---@param delay uint
+local function queue(surface, position, delay)
+	local rt = state()
+	local key = surface.index..":"..position.x..":"..position.y
+	if rt.queued[key] then return end
+	rt.queued[key] = true
+	due(rt.queue, game.tick + math.max(delay, 1), surface, position)
+end
+
 ---Arms an unstable ore: a core on its tile, if it has none. Other ore is left as it is.
 ---@param ore LuaEntity
 function RedTiberium.arm(ore)
@@ -93,10 +106,8 @@ end
 ---entity with health round it, the other Tiberium left alone. With no unstable ore there, only the core goes.
 ---@param surface LuaSurface
 ---@param position MapPosition
----@param dying LuaEntity? The core whose death set it off, left to die
-function RedTiberium.blast(surface, position, dying)
-	local core = coreAt(surface, position)
-	if core and core ~= dying then core.destroy() end
+function RedTiberium.blast(surface, position)
+	RedTiberium.disarm(surface, position)
 	local ore = surface.find_entities_filtered{name = TiberiumColours.UNSTABLE, position = position, radius = 0.5, limit = 1}[1]
 	if not ore then return end
 	local explosion = TiberiumColours.BY_ORE[ore.name].explosion
@@ -118,15 +129,12 @@ end
 ---@param surface LuaSurface
 ---@param position MapPosition
 ---@param delay uint
+---@return boolean armed Whether the tile was armed red
 function RedTiberium.hit(surface, position, delay)
 	local core = coreAt(surface, position)
-	if not core then return end
-	position = core.position
-	local rt = state()
-	local key = surface.index..":"..position.x..":"..position.y
-	if rt.queued[key] then return end
-	rt.queued[key] = true
-	due(rt.queue, game.tick + math.max(delay, 1), surface, position)
+	if not core then return false end
+	queue(surface, core.position, delay)
+	return true
 end
 
 ---What a blast sets going round it: its red neighbours, and its shards
@@ -221,7 +229,7 @@ function RedTiberium.on_entity_died(event)
 	local entity = event.entity
 	if not (entity and entity.valid) then return end
 	if entity.name == RedTiberium.CORE then
-		RedTiberium.blast(entity.surface, entity.position, entity)
+		queue(entity.surface, entity.position, 1)
 		return
 	end
 	if isBuilding[entity.name] == nil then
