@@ -520,8 +520,10 @@ interface.add_growth_blocker = function(entity_name)
 		storage.growthBlockers[entity_name] = true
 	end
 end
--- Seed Tiberium as a liquid seed does (TiberiumSeedMissile): surface, position, amount, ore name
-interface.TiberiumSeedMissile = function(surface, position, amount, oreName) TiberiumSeedMissile(surface, position, amount, oreName) end
+-- Seed Tiberium as a liquid seed does (TiberiumSeedMissile): surface, position ({x =, y =} or {x, y}), amount, ore name
+interface.TiberiumSeedMissile = function(surface, position, amount, oreName)
+	TiberiumSeedMissile(surface, {x = position.x or position[1], y = position.y or position[2]}, amount, oreName)
+end
 
 remote.add_interface("Tiberium", interface)
 
