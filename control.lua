@@ -520,6 +520,8 @@ interface.add_growth_blocker = function(entity_name)
 		storage.growthBlockers[entity_name] = true
 	end
 end
+-- Seed Tiberium as a liquid seed does (TiberiumSeedMissile): surface, position, amount, ore name
+interface.TiberiumSeedMissile = function(surface, position, amount, oreName) TiberiumSeedMissile(surface, position, amount, oreName) end
 
 remote.add_interface("Tiberium", interface)
 
@@ -529,6 +531,27 @@ function everyoneGetsAchievement(achievementName)
 			player.unlock_achievement(achievementName)
 		end
 	end
+end
+
+---The first ore of a colour that never grows (red) placed anywhere: announced, added to filter selections, an achievement.
+---Blue, which mutates from green, keeps its own announcement in AddOre.
+---@param surface LuaSurface
+---@param position MapPosition
+---@param oreName string
+function sightColour(surface, position, oreName)
+	local colour = TiberiumColours.BY_ORE[oreName]
+	if not colour or colour.grows or not colour.unlock then return end
+	storage.tiberiumSighted = storage.tiberiumSighted or {}
+	if storage.tiberiumSighted[colour.key] then return end
+	storage.tiberiumSighted[colour.key] = game.tick
+	game.print({"tiberium-strings.wild-"..colour.key.."-notification", "[img=item."..colour.ore.."]",
+		"[gps="..math.floor(position.x)..","..math.floor(position.y)..","..surface.name.."]"})
+	for _, force in pairs(game.forces) do
+		if force.recipes and force.recipes[colour.unlock] then
+			force.recipes[colour.unlock].enabled = true  -- Hidden recipe to add the colour to filter selections
+		end
+	end
+	everyoneGetsAchievement("tiberium-"..colour.key.."-spawn")
 end
 
 ---Determine probability for green tiberium ore to turn blue based on settings and evo factor
@@ -581,6 +604,15 @@ function AddOre(surface, position, amount, oreName, cascaded)
 	local tile = surface.get_tile(position.x, position.y)
 	local growthRate = math.min(amount, TiberiumMaxPerTile)
 
+	-- A colour that never grows (red): growth reaching its tile stops there, and it is placed only where no Tiberium is
+	local standing = oreEntity and TiberiumColours.BY_ORE[oreEntity.name]
+	local placing = TiberiumColours.BY_ORE[oreName]
+	if standing and not standing.grows then
+		return oreEntity
+	elseif oreEntity and placing and not placing.grows then
+		return nil
+	end
+
 	-- Growth that names no ore grows any Tiberium past green that it reaches, rather than replacing it
 	if oreEntity and (oreEntity.name == oreName or (oreEntity.name ~= TiberiumColours[1].ore and not overrideOre)) then
 		-- Grow existing tib except for the case where it needs to be replaced instead of growing it
@@ -620,6 +652,7 @@ function AddOre(surface, position, amount, oreName, cascaded)
 		else
 			--Testing performance
 			oreEntity = surface.create_entity{name = oreName, amount = growthRate, position = position, enable_cliff_removal = false}
+			sightColour(surface, position, oreName)
 			if storage.tiberiumTerrain and surface.platform == nil then
 				surface.set_tiles({{name = storage.tiberiumTerrain, position = position}}, true, false)
 			end
@@ -897,7 +930,9 @@ function TiberiumSeedMissile(surface, position, amount, oreName, ignoreNode)
 	end
 	local center = {x = math.floor(position.x) + 0.5, y = math.floor(position.y) + 0.5}
 	local oreEntity = surface.find_entity(oreName, center)
-	if oreEntity and (oreEntity.amount >= TiberiumMaxPerTile) then
+	local colour = TiberiumColours.BY_ORE[oreName]
+	-- A node grows its field: never one from a colour that does not grow (red)
+	if oreEntity and (oreEntity.amount >= TiberiumMaxPerTile) and not (colour and not colour.grows) then
 		local success = CreateNode(surface, center, true)
 		if success and (amount == 4.1 * TiberiumMaxPerTile) then
 			everyoneGetsAchievement("tiberium-seed-node")
@@ -1538,6 +1573,9 @@ end)
 
 ---Revalidate nodes and blue tiberium status
 function storageIntegrityChecks()
+	-- Every colour's ore, a save from before a colour was added (red) included
+	storage.oreTypes = flib_table.shallow_copy(TiberiumColours.ORES)
+	storage.tiberiumProducts = storage.oreTypes
 	local nodeCount = 0
 	for _, surface in pairs(game.surfaces) do
 		nodeCount = nodeCount + surface.count_entities_filtered{name = "tibGrowthNode"}
