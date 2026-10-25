@@ -66,22 +66,21 @@ redCopy("projectile", "tiberium-catalyst-missile-blue")
 redCopy("projectile", "tiberium-catalyst-chain-blue")
 redCopy("achievement", "tiberium-blue-spawn")
 
-for _, name in pairs({"tiberium-ore-processing-blue", "tiberium-liquid-processing-blue", "tiberium-blue-explosives",
+-- Red never becomes liquid Tiberium: it has uses of its own (brain: Red Tiberium - Project 3b - Red's Uses), and
+-- liquid Tiberium is its own thing, not molten crystal - so blue's refining recipe is the one not copied
+for _, name in pairs({"tiberium-ore-processing-blue", "tiberium-blue-explosives",
 		"tiberium-primed-reactant-blue", "tiberium-grenade-blue", "tiberium-catalyst-missile-blue", "tiberium-unlock-blue-filter"}) do
 	local recipe = redCopy("recipe", name)
 	if recipe.crafting_machine_tint then
 		recipe.crafting_machine_tint = flib_table.deep_copy(RED_CRAFTING_TINT)
 	end
 end
--- Refined, red gives liquid Tiberium by its price against blue's
-for _, result in pairs(data.raw.recipe["tiberium-liquid-processing-red"].results) do
-	if result.name == "liquid-tiberium" then
-		result.amount = math.floor(result.amount * RED_PER_BLUE + 0.5)
-	end
-end
 
--- Red Tiberium Refining: after blue's, a science pack further, unlocking all of red
+-- Red Tiberium Refining: after blue's, a science pack further, unlocking all of red but liquid
 local tech = redCopy("technology", "tiberium-refining-blue")
+for i = #tech.effects, 1, -1 do
+	if tech.effects[i].recipe == "tiberium-liquid-processing-red" then table.remove(tech.effects, i) end
+end
 for _, recipe in pairs({"tiberium-primed-reactant-red", "tiberium-grenade-red", "tiberium-catalyst-missile-red"}) do
 	table.insert(tech.effects, {type = "unlock-recipe", recipe = recipe})
 end
