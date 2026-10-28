@@ -174,6 +174,27 @@ if common.tierZero and (common.whichPlanet == "pure-nauvis" or common.whichPlane
 	data.raw.technology["tiberium-ore-centrifuging"].research_trigger = {type = "mine-entity", entities = {"tiberium-tiber-rock"}}
 	common.technology.addPrerequisite("electronics", "tiberium-ore-centrifuging")
 	common.technology.addPrerequisite("steam-power", "tiberium-ore-centrifuging")
+
+	-- Remove oil trigger tech
+	if data.raw.technology["oil-processing"] and data.raw.technology["oil-processing"].research_trigger then
+		for _, tech in pairs(data.raw.technology["oil-processing"].prerequisites or {}) do
+			if data.raw.technology[tech] and data.raw.technology[tech].unit then
+				data.raw.technology["oil-processing"].unit = util.copy(data.raw.technology[tech].unit)
+				data.raw.technology["oil-processing"].research_trigger = nil
+				break
+			end
+		end
+		-- Fallbacks
+		if data.raw.technology["oil-processing"].research_trigger then
+			for _, fallback in pairs({"oil-gathering", "plastics", "tiberium-thermal-research"}) do
+				if data.raw.technology[fallback] and data.raw.technology[fallback].unit then
+					data.raw.technology["oil-processing"].unit = util.copy(data.raw.technology[fallback].unit)
+					data.raw.technology["oil-processing"].research_trigger = nil
+					break
+				end
+			end
+		end
+	end
 end
 
 if not mods["space-age"] then
