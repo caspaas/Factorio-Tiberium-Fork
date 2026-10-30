@@ -2218,6 +2218,47 @@ script.on_event(defines.events.on_cutscene_cancelled, function(event)
 		end
 end)
 
+---The Tiber start's crash for its first player: freeplay's ship and pieces with three Tiber rocks, then the cutscene.
+---A companion mod may take it over - the Tiberian Sun: Firestorm Expansion makes it itself once the player has chosen a
+---side - through its remote interface "tiberium-crash-site": if take_crash returns true, nothing is made here.
+---@param player LuaPlayer
+---@param surface LuaSurface
+function TiberStartCrash(player, surface)
+	storage.starting_message = remote.call("freeplay", "get_custom_intro_message")
+	storage.crashed_debris_items = remote.call("freeplay", "get_debris_items")
+	storage.crashed_ship_items = remote.call("freeplay", "get_ship_items")
+	storage.crashed_ship_parts = remote.call("freeplay", "get_ship_parts")
+	table.insert(storage.crashed_ship_parts, {
+		name = "tiberium-tiber-rock",
+		max_distance = 40,
+		angle_deviation = 0.2,
+		min_separation = 2,
+		repeat_count = 3,
+	})
+
+	local companion = remote.interfaces["tiberium-crash-site"]
+	if companion and companion.take_crash and remote.call("tiberium-crash-site", "take_crash", {
+		player_index = player.index,
+		surface_index = surface.index,
+		position = {-5, -6},
+		ship_items = util.copy(storage.crashed_ship_items),
+		debris_items = util.copy(storage.crashed_debris_items),
+		ship_parts = util.copy(storage.crashed_ship_parts),
+	}) then
+		return
+	end
+
+	surface.daytime = 0.7
+	crash_site.create_crash_site(surface, {-5,-6}, util.copy(storage.crashed_ship_items), util.copy(storage.crashed_debris_items), util.copy(storage.crashed_ship_parts))
+	util.remove_safe(player.character, storage.crashed_ship_items)
+	util.remove_safe(player.character, storage.crashed_debris_items)
+	if player.character then
+		player.character.destructible = false
+	end
+	storage.crash_site_cutscene_active = true
+	crash_site.create_cutscene(player, {-5, -4})
+end
+
 script.on_event(defines.events.on_player_created, function(event)
 	local player = game.get_player(event.player_index) --[[@as LuaPlayer]]
 	if settings.startup["tiberium-advanced-start"].value then --or whichPlanet == "tiber-start" or whichPlanet == "pure-nauvis" then
@@ -2253,28 +2294,7 @@ script.on_event(defines.events.on_player_created, function(event)
 
 		if not storage.init then
 			storage.init = true
-			storage.starting_message = remote.call("freeplay", "get_custom_intro_message")
-			storage.crashed_debris_items = remote.call("freeplay", "get_debris_items")
-			storage.crashed_ship_items = remote.call("freeplay", "get_ship_items")
-			storage.crashed_ship_parts = remote.call("freeplay", "get_ship_parts")
-			table.insert(storage.crashed_ship_parts, {
-				name = "tiberium-tiber-rock",
-				max_distance = 40,
-				angle_deviation = 0.2,
-				min_separation = 2,
-				repeat_count = 3,
-			})
-
-			surface.daytime = 0.7
-			crash_site.create_crash_site(surface, {-5,-6}, util.copy(storage.crashed_ship_items), util.copy(storage.crashed_debris_items), util.copy(storage.crashed_ship_parts))
-			util.remove_safe(player.character, storage.crashed_ship_items)
-			util.remove_safe(player.character, storage.crashed_debris_items)
-			if player.character then
-				player.character.destructible = false
-			end
-			storage.crash_site_cutscene_active = true
-			crash_site.create_cutscene(player, {-5, -4})
-
+			TiberStartCrash(player, surface)
 			chart_starting_area()
 		end
 	elseif whichPlanet == "tiber-start" and script.active_mods["any-planet-start"] then
